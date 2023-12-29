@@ -1,11 +1,31 @@
 import { Link, Navigate, useLoaderData } from 'react-router-dom'
 import { fetchSingleCocktail } from '../../fetchCocktail'
 import Wrapper from '../assets/wrappers/CocktailPage'
-export default function Cocktail() {
-  const { id, data } = useLoaderData()
+import { useQuery } from '@tanstack/react-query'
 
+const searchSingleCocktailQuery = (searchedId) => {
+  return {
+    queryKey: ['searchCocktail', searchedId],
+    queryFn: async () => {
+      const request = await fetchSingleCocktail('/', {
+        params: {
+          i: `${searchedId}`,
+        },
+      })
+      const response = await request.data
+      return response
+    },
+  }
+}
+
+export default function Cocktail() {
+  const { id } = useLoaderData()
+  const { data, isLoading } = useQuery(searchSingleCocktailQuery(id))
   if (!data) {
     return <Navigate to="/" />
+  }
+  if (isLoading) {
+    return <h1>Loading...</h1>
   }
   const currentDrink = data.drinks[0]
   // console.log(data.drinks[0])
@@ -81,16 +101,9 @@ export default function Cocktail() {
   )
 }
 
-export const loader = async (data) => {
-  const searchedId = data?.params.id
+export const loader = (queryClient) => async (data) => {
+  const searchedId = data?.params?.id
   console.log(searchedId)
-  const request = await fetchSingleCocktail('/', {
-    params: {
-      i: `${searchedId}`,
-    },
-  })
-  const response = await request.data
-  console.log(response)
-
-  return { id: searchedId, data: response }
+  await queryClient.ensureQueryData(searchSingleCocktailQuery(searchedId))
+  return { id: searchedId }
 }
